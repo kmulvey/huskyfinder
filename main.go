@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -70,9 +71,35 @@ type LongmontAnimal struct {
 	IsBarnCat    bool        `json:"is_barn_cat"`
 }
 
+type PetangoResponse struct {
+	Items     []PetangoAnimal `json:"items"`
+	Count     int             `json:"count"`
+	ZipCode   string          `json:"zipCode"`
+	BreedName string          `json:"breedName"`
+}
+
+type PetangoAnimal struct {
+	ID           int         `json:"id"`
+	Name         string      `json:"name"`
+	SpeciesID    int         `json:"speciesId"`
+	Photo        string      `json:"photo"`
+	Age          string      `json:"age"`
+	Distance     int         `json:"distance"`
+	Gender       string      `json:"gender"`
+	Breed        string      `json:"breed"`
+	NoDogs       bool        `json:"noDogs"`
+	NoCats       bool        `json:"noCats"`
+	NoKids       bool        `json:"noKids"`
+	URL          string      `json:"url"`
+	AdoptionDate interface{} `json:"adoptionDate"`
+	HasVideo     bool        `json:"hasVideo"`
+	Score        int         `json:"score"`
+}
+
 func main() {
 	boulder()
 	longmont()
+	petango()
 }
 
 func boulder() {
@@ -137,6 +164,43 @@ func longmont() {
 			if strings.Contains(strings.ToLower(d.PrimaryBreed), "husky") {
 				fmt.Println("Longmont", d.Name)
 			}
+		}
+	}
+}
+
+func petango() {
+	endpoint := "https://www.petango.com/DesktopModules/Pethealth.Petango/Pethealth.Petango.DnnModules.AnimalSearchResult/API/Main/Search"
+	data := url.Values{}
+	data.Set("action", "search_adoptable")
+
+	request, err := http.NewRequest("POST", endpoint, bytes.NewBuffer([]byte(`{"location":"80301","distance":"200","speciesId":"1","breedId":"670","goodWithDogs":false,"goodWithCats":false,"goodWithChildren":false,"mustHavePhoto":        false,"mustHaveVideo":false,"happyTails":false,"lostAnimals":false,"moduleId":843,"recordOffset":0,"recordAmount":26}`)))
+	request.Header.Add("Accept", "application/json, text/javascript, */*; q=0.01")
+	request.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Add("ModuleId", "843")
+	request.Header.Add("TabId", "260")
+	request.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var results PetangoResponse
+	err = json.Unmarshal(body, &results)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, d := range results.Items {
+		if strings.Contains(strings.ToLower(d.Breed), "husky") { // i think the req body takes care of this but cant hurt anyway
+			fmt.Println("Petango", d.Name)
 		}
 	}
 }
